@@ -16,41 +16,46 @@ function stepIndex(stage) {
   return idx >= 0 ? idx : 0;
 }
 
-function statusColor(caseItem) {
-  if (caseItem.approvalStatus === "approved") return "border-go/40 text-go";
-  if (caseItem.approvalStatus === "declined") return "border-alert/40 text-alert";
-  if (caseItem.escalated) return "border-signal/40 text-signal";
-  if (caseItem.stage === "Notified") return "border-go/40 text-go";
-  return "border-line text-slate-300";
+function statusBorderColor(caseItem) {
+  if (caseItem.approvalStatus === "approved") return "border-success/40";
+  if (caseItem.approvalStatus === "declined") return "border-danger/40";
+  if (caseItem.escalated) return "border-warning/40";
+  if (caseItem.stage === "Notified") return "border-success/40";
+  return "border-border";
 }
 
 function Stepper({ caseItem }) {
   const currentIdx = stepIndex(caseItem.stage);
   return (
-    <div className="flex items-center gap-1.5 mt-2.5">
-      {STEPS.map((s, i) => (
-        <React.Fragment key={s}>
-          <div
-            title={s}
-            className={`w-2 h-2 rounded-full transition-all ${
-              i < currentIdx
-                ? "bg-go"
-                : i === currentIdx
-                ? caseItem.escalated && i === 4
-                  ? "bg-signal pulse-dot"
-                  : "bg-sky-400 pulse-dot"
-                : "bg-line"
-            }`}
-          />
-          {i < STEPS.length - 1 && (
-            <div
-              className={`w-3.5 h-px ${
-                i < currentIdx ? "bg-go/60" : "bg-line"
-              }`}
-            />
-          )}
-        </React.Fragment>
-      ))}
+    <div className="mt-3">
+      <div className="flex items-center gap-1">
+        {STEPS.map((s, i) => (
+          <React.Fragment key={s}>
+            <div className="flex flex-col items-center gap-1">
+              <div
+                title={s}
+                className={`w-2.5 h-2.5 rounded-full transition-all ${
+                  i < currentIdx
+                    ? "bg-success"
+                    : i === currentIdx
+                    ? caseItem.escalated && i === 4
+                      ? "bg-warning pulse-dot"
+                      : "bg-accent pulse-dot"
+                    : "bg-border"
+                }`}
+              />
+              <span className="text-[9px] text-muted leading-none hidden sm:block whitespace-nowrap">
+                {s}
+              </span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div
+                className={`w-4 h-px mb-3 ${i < currentIdx ? "bg-success/60" : "bg-border"}`}
+              />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
     </div>
   );
 }
@@ -60,36 +65,32 @@ function CaseRow({ caseItem, onApprove, onDecline }) {
 
   return (
     <div
-      className={`board-row rounded-xl border bg-panel p-4 transition-all shadow-sm ${statusColor(
-        caseItem
-      )}`}
+      className={`board-row rounded-lg border bg-panel p-4 transition-all ${statusBorderColor(caseItem)}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="mono text-xs font-bold text-white">
+            <span className="text-sm font-semibold text-white">
               {caseItem.flight_id || "Flight"}
             </span>
-            <span className="mono text-[10px] uppercase px-1.5 py-0.5 rounded bg-wash border border-line text-slate-400">
+            <span className="mono text-[10px] px-1.5 py-0.5 rounded bg-subtle border border-border text-muted">
               {caseItem.pax_id}
             </span>
             <span
-              className={`mono text-[10px] uppercase px-1.5 py-0.5 rounded font-semibold ${
+              className={`mono text-[10px] uppercase px-1.5 py-0.5 rounded font-medium ${
                 caseItem.status === "cancelled"
-                  ? "bg-alert/20 text-alert border border-alert/30"
-                  : "bg-signal/20 text-signal border border-signal/30"
+                  ? "bg-danger/20 text-danger border border-danger/30"
+                  : "bg-warning/20 text-warning border border-warning/30"
               }`}
             >
               {caseItem.status}
             </span>
           </div>
 
-          <div className="mono text-xs font-semibold mt-1.5 flex items-center gap-2">
+          <div className="text-xs font-medium mt-1.5 flex items-center gap-2">
             <span className="text-white">{caseItem.stage}</span>
             {caseItem.approvalStatus && (
-              <span className="text-[11px] font-normal text-slate-400">
-                · {caseItem.approvalStatus}
-              </span>
+              <span className="text-muted">· {caseItem.approvalStatus}</span>
             )}
           </div>
 
@@ -98,18 +99,18 @@ function CaseRow({ caseItem, onApprove, onDecline }) {
 
         <button
           onClick={() => setOpen((o) => !o)}
-          className="mono text-[10px] uppercase tracking-wider text-slate-400 hover:text-white px-2 py-1 rounded bg-wash border border-line shrink-0"
+          className="text-xs text-muted hover:text-white px-2.5 py-1 rounded bg-subtle border border-border shrink-0 transition-colors"
         >
-          {open ? "Hide Details" : "Inspect →"}
+          {open ? "Hide" : "Details"}
         </button>
       </div>
 
       {open && (
-        <div className="mt-3.5 pt-3.5 border-t border-line space-y-2.5 text-xs text-slate-300">
+        <div className="mt-4 pt-4 border-t border-border space-y-3 text-sm text-slate-300">
           {caseItem.reasoning && (
-            <div className="p-2.5 rounded bg-wash border border-line leading-relaxed">
-              <span className="mono text-[9px] uppercase tracking-wider text-sky-400 block mb-1 font-semibold">
-                Agent Reasoning:
+            <div className="p-3 rounded-lg bg-subtle border border-border leading-relaxed">
+              <span className="text-xs font-semibold text-muted block mb-1">
+                Agent reasoning
               </span>
               {caseItem.reasoning}
             </div>
@@ -117,15 +118,19 @@ function CaseRow({ caseItem, onApprove, onDecline }) {
 
           {caseItem.rippleEffects?.length > 0 && (
             <div>
-              <div className="mono text-[10px] uppercase tracking-wider text-slate-400 mb-1 font-semibold">
-                Ripple Adjustments ({caseItem.rippleEffects.length})
+              <div className="text-xs font-semibold text-muted mb-2">
+                Booking adjustments ({caseItem.rippleEffects.length})
               </div>
               <ul className="space-y-1">
                 {caseItem.rippleEffects.map((r, i) => (
-                  <li key={i} className="text-[11px] text-slate-300 bg-wash/60 p-1.5 rounded border border-line/60">
-                    <span className="text-sky-300 mono font-semibold">{r.leg}.{r.field}</span>:{" "}
+                  <li key={i} className="text-xs text-slate-300 bg-subtle/60 p-2 rounded border border-border/60">
+                    <span className="text-accent font-medium capitalize">
+                      {r.leg} {r.field}:
+                    </span>{" "}
                     {r.from} → {r.to}
-                    <div className="text-[10px] text-slate-500 mt-0.5">{r.reason}</div>
+                    {r.reason && (
+                      <div className="text-muted mt-0.5">{r.reason}</div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -133,9 +138,9 @@ function CaseRow({ caseItem, onApprove, onDecline }) {
           )}
 
           {caseItem.message && (
-            <div className="text-[11px] text-slate-300 bg-wash rounded p-2.5 border border-line">
-              <span className="mono text-[9px] uppercase tracking-wider text-go block mb-1 font-semibold">
-                Traveller Alert Sent:
+            <div className="text-xs text-slate-300 bg-subtle rounded p-3 border border-border">
+              <span className="font-semibold text-success block mb-1">
+                Traveller notification sent
               </span>
               {caseItem.message}
             </div>
@@ -143,16 +148,16 @@ function CaseRow({ caseItem, onApprove, onDecline }) {
 
           {caseItem.stage === "Pending your approval" &&
             caseItem.approvalStatus === "pending" && (
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => onApprove && onApprove(caseItem.auditId)}
-                  className="mono text-xs uppercase tracking-wider px-3 py-1.5 rounded bg-go text-slate-950 font-bold hover:bg-emerald-400"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-success text-slate-950 font-semibold hover:opacity-90 transition-opacity"
                 >
-                  Approve Recovery Plan
+                  Approve recovery plan
                 </button>
                 <button
                   onClick={() => onDecline && onDecline(caseItem.auditId)}
-                  className="mono text-xs uppercase tracking-wider px-3 py-1.5 rounded bg-alert/20 text-alert border border-alert/40 hover:bg-alert/30 font-semibold"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-danger/20 text-danger border border-danger/40 hover:bg-danger/30 font-semibold transition-colors"
                 >
                   Decline
                 </button>
@@ -168,26 +173,17 @@ export default function LiveFeed({ cases = [], onApprove, onDecline }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div>
-          <span className="mono text-[10px] uppercase tracking-widest text-sky-400 font-semibold">
-            Real-time Pipeline
-          </span>
-          <h2 className="text-base font-bold text-white mt-0.5">
-            Autonomous Recovery Feed
-          </h2>
-        </div>
-        <span className="mono text-[10px] text-slate-500 hidden sm:inline">
-          Ingest → Impact → Rank → Ripple → Resolve → Notify
-        </span>
+        <h2 className="text-sm font-semibold text-white">Event pipeline</h2>
+        <span className="text-xs text-muted">{cases.length} event{cases.length === 1 ? "" : "s"}</span>
       </div>
 
-      <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1">
+      <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
         {cases.length === 0 ? (
-          <div className="mono text-xs text-slate-500 border border-dashed border-line rounded-xl p-8 text-center bg-panel/40">
-            <div className="text-xl mb-1">📡</div>
-            No disruptions currently active in the pipeline.
-            <div className="text-[11px] text-slate-600 mt-1">
-              Trigger a simulation above or click "Run PS 4.1 Demo Scenario".
+          <div className="text-sm text-muted border border-dashed border-border rounded-lg p-8 text-center bg-panel/40">
+            <div className="text-2xl mb-2">📡</div>
+            No disruptions in the pipeline yet.
+            <div className="text-xs text-muted/60 mt-1">
+              Trigger a scenario below to see events here.
             </div>
           </div>
         ) : (
