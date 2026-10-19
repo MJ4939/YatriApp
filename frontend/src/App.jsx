@@ -6,10 +6,7 @@ import ItineraryComparison from "./components/ItineraryComparison.jsx";
 import AlternativeOptionsGrid from "./components/AlternativeOptionsGrid.jsx";
 import RecoveryActionHub from "./components/RecoveryActionHub.jsx";
 import ConstraintEditor from "./components/ConstraintEditor.jsx";
-import InjectorControls from "./components/InjectorControls.jsx";
-import LiveFeed from "./components/LiveFeed.jsx";
-import AuditLog from "./components/AuditLog.jsx";
-import StatsPanel from "./components/StatsPanel.jsx";
+import DevDiagnosticsPanel from "./components/DevDiagnosticsPanel.jsx";
 
 const POLL_MS = 1200;
 
@@ -149,7 +146,6 @@ export default function App() {
   const currentDisruption = activeDisruptions[selectedPaxId];
   const currentConstraints = constraintsMap[selectedPaxId];
 
-  // Active chosen plan: custom chosen or disruption's chosen
   const activeChosen = customChosenOption || currentDisruption?.chosen;
 
   const showToast = (msg) => {
@@ -201,7 +197,7 @@ export default function App() {
   const handleSaveConstraints = async (newConstraints) => {
     await api.updateConstraints(selectedPaxId, newConstraints);
     setConstraintsMap((prev) => ({ ...prev, [selectedPaxId]: newConstraints }));
-    showToast("Traveller constraints updated successfully.");
+    showToast("Preferences updated.");
   };
 
   const handleEvaluateRecovery = async (newConstraints) => {
@@ -209,7 +205,7 @@ export default function App() {
     const res = await api.simulate({
       pax_id: selectedPaxId,
       status: currentStatus,
-      reason: "Traveller updated constraints; re-evaluating recovery alternatives",
+      reason: "Traveller updated preferences; re-evaluating recovery options",
       constraints: newConstraints,
     });
     setCustomChosenOption(null);
@@ -217,7 +213,7 @@ export default function App() {
       ...prev,
       [selectedPaxId]: { ...res, active: true },
     }));
-    showToast("Recovery plans re-evaluated under updated constraints.");
+    showToast("Recovery options re-evaluated under updated preferences.");
   };
 
   const handleDemoScenario = async () => {
@@ -228,7 +224,7 @@ export default function App() {
       ...prev,
       ["PAX-1001"]: { ...res, active: true },
     }));
-    showToast("⚡ PS 4.1 Canonical Demo scenario triggered for Jordan Lee!");
+    showToast("Demo scenario triggered for Jordan Lee.");
   };
 
   const handleDemoReset = async () => {
@@ -240,61 +236,71 @@ export default function App() {
     setCustomChosenOption(null);
     const itins = await api.itineraries();
     setItineraries(itins);
-    showToast("↺ Demonstration state cleanly reset to baseline.");
+    showToast("State reset to baseline.");
   };
 
   const cases = reduceFeedToCases(feedEvents);
+  const hasDisruption = currentDisruption?.active;
 
   return (
-    <div className="min-h-screen pb-16">
-      {/* Top Navigation & Brand Header */}
-      <header className="border-b border-line bg-panel/70 backdrop-blur-md sticky top-0 z-40 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="min-h-screen bg-surface text-white">
+      {/* ── Header ── */}
+      <header className="border-b border-border bg-panel sticky top-0 z-40 px-4 sm:px-6 py-3">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Brand */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center shadow-md shadow-sky-500/20 text-white font-extrabold text-xl tracking-tighter">
+            <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center font-bold text-white text-sm shrink-0">
               Y
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-extrabold tracking-tight text-white">
-                  Yatri AI
-                </h1>
-                <span className="mono text-[10px] uppercase px-2 py-0.5 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-400 font-bold">
-                  PS 4.1 Travel Recovery
+                <h1 className="text-sm font-bold text-white">Yatri AI</h1>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-subtle border border-border text-muted font-medium">
+                  Simulation mode
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-medium">
-                Intelligent Travel Disruption Recovery · Multi-Modal Agent Engine
-              </p>
+              <p className="text-xs text-muted">Intelligent travel disruption recovery</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {/* Status pills */}
-            <div className="flex items-center gap-1.5 mono text-[11px] px-2.5 py-1 rounded-full bg-wash border border-line text-slate-300">
+          {/* Right side */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Backend status */}
+            <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-subtle border border-border text-muted">
               <span
-                className={`w-2 h-2 rounded-full ${
-                  backendOnline ? "bg-go animate-pulse" : "bg-alert"
-                }`}
+                className={`w-1.5 h-1.5 rounded-full ${backendOnline ? "bg-success animate-pulse" : "bg-danger"}`}
               />
-              <span>{backendOnline ? "Engine Connected" : "Connecting..."}</span>
+              <span>{backendOnline ? "Connected" : "Offline"}</span>
             </div>
 
-            <div className="mono text-[11px] px-2.5 py-1 rounded-full bg-wash border border-line text-slate-400 hidden sm:inline">
-              Simulated GDS Sandbox
-            </div>
+            {/* Traveller switcher */}
+            {itineraries.length > 0 && (
+              <select
+                value={selectedPaxId}
+                onChange={(e) => setSelectedPaxId(e.target.value)}
+                className="text-xs bg-subtle border border-border rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-accent"
+              >
+                {itineraries.map((it) => (
+                  <option key={it.pax_id} value={it.pax_id}>
+                    {it.member_name} ({it.pax_id})
+                  </option>
+                ))}
+              </select>
+            )}
 
-            {/* Quick Demo CTA */}
+            {/* Run Demo */}
             <button
               onClick={handleDemoScenario}
-              className="mono text-xs uppercase tracking-wider font-bold px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-sky-500 to-blue-600 text-slate-950 hover:from-sky-400 hover:to-blue-500 transition-all shadow-md shadow-sky-500/25 flex items-center gap-1.5"
+              className="text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-accent text-white hover:bg-blue-500 transition-colors"
             >
-              <span>⚡</span> Run PS 4.1 Demo
+              Run demo
             </button>
+
+            {/* Reset */}
             <button
               onClick={handleDemoReset}
-              className="mono text-xs px-2.5 py-1.5 rounded-lg bg-wash border border-line text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
-              title="Reset state to clean baseline"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-subtle border border-border text-muted hover:text-white transition-colors"
+              title="Reset to baseline"
             >
               ↺ Reset
             </button>
@@ -302,34 +308,100 @@ export default function App() {
         </div>
       </header>
 
-      {/* Action Notice Toast */}
+      {/* ── Toast ── */}
       {actionNotice && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-slate-900 border border-sky-500/60 text-white px-4 py-3 shadow-xl text-xs mono flex items-center gap-2 animate-bounce">
-          <span className="text-sky-400 font-bold">●</span>
+        <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-panel border border-accent/60 text-white px-4 py-3 shadow-xl text-sm flex items-center gap-2 board-row">
+          <span className="text-accent">●</span>
           <span>{actionNotice}</span>
         </div>
       )}
 
-      {/* Main Dashboard Content */}
-      <main className="px-4 sm:px-6 py-6 max-w-7xl mx-auto space-y-8">
-        {/* Hackathon Problem Statement Overview Banner */}
-        <div className="rounded-xl border border-sky-500/30 bg-gradient-to-r from-sky-950/40 via-panel to-panel p-4 text-xs text-slate-300 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
-          <div className="flex items-start gap-2.5">
-            <span className="text-sky-400 text-base font-bold">ℹ</span>
-            <div>
-              <strong className="text-white">Demonstration Workflow: </strong>
-              Select a traveller profile ➔ Trigger simulated flight cancellation or transport delay ➔
-              Configure hard constraints (budget, deadline) & priority preferences ➔
-              Yatri AI computes multi-modal graph alternatives, enforces hard policies, reschedules hotel/car, and routes for member approval.
-            </div>
-          </div>
-          <div className="mono text-[11px] text-slate-400 whitespace-nowrap shrink-0">
-            Hard Constraints: Never Silently Violated
-          </div>
-        </div>
+      {/* ── Main ── */}
+      <main className="px-4 sm:px-6 py-6 max-w-7xl mx-auto space-y-6">
 
-        {/* 1. Disruption Simulator & Hackathon Scenario Engine */}
-        <InjectorControls
+        {/* ── DISRUPTION ACTIVE FLOW ── */}
+        {hasDisruption ? (
+          <>
+            {/* 1. Disruption summary — first thing user sees */}
+            <DisruptionAlertBanner
+              disruption={currentDisruption}
+              itinerary={currentItinerary}
+              onDismiss={() => {
+                setActiveDisruptions((prev) => ({
+                  ...prev,
+                  [selectedPaxId]: { ...prev[selectedPaxId], active: false },
+                }));
+              }}
+            />
+
+            {/* 2. Recovery options — visual center */}
+            {currentDisruption.options_considered?.length > 0 && (
+              <AlternativeOptionsGrid
+                options={currentDisruption.options_considered}
+                selectedFlightId={activeChosen?.flight?.flight_id}
+                onSelectOption={(opt) => setCustomChosenOption(opt)}
+              />
+            )}
+
+            {/* 3. Preferences (collapsed by default, below options) */}
+            <ConstraintEditor
+              paxId={selectedPaxId}
+              constraints={currentConstraints}
+              onSave={handleSaveConstraints}
+              onEvaluate={handleEvaluateRecovery}
+            />
+
+            {/* 4. Recovery action hub */}
+            <RecoveryActionHub
+              disruption={currentDisruption}
+              onApprove={handleApprove}
+              onDecline={handleDecline}
+            />
+
+            {/* 5. Itinerary comparison */}
+            <ItineraryComparison
+              original={currentItinerary}
+              chosen={activeChosen}
+              hasFeasibleSolution={currentDisruption.has_feasible_solution}
+            />
+          </>
+        ) : (
+          <>
+            {/* ── NO DISRUPTION: normal state ── */}
+            <ItineraryBoard
+              itineraries={itineraries}
+              selectedPaxId={selectedPaxId}
+              onSelectPax={setSelectedPaxId}
+              activeDisruptions={activeDisruptions}
+            />
+
+            <ConstraintEditor
+              paxId={selectedPaxId}
+              constraints={currentConstraints}
+              onSave={handleSaveConstraints}
+              onEvaluate={handleEvaluateRecovery}
+            />
+
+            {/* Empty state prompt */}
+            <div className="rounded-lg border border-dashed border-border bg-panel/40 p-8 text-center">
+              <div className="text-2xl mb-2">✈️</div>
+              <p className="text-sm font-medium text-white">No active disruptions</p>
+              <p className="text-xs text-muted mt-1">
+                Click{" "}
+                <button
+                  onClick={handleDemoScenario}
+                  className="text-accent hover:underline"
+                >
+                  Run demo
+                </button>{" "}
+                in the header to simulate a flight cancellation scenario.
+              </p>
+            </div>
+          </>
+        )}
+
+        {/* ── Developer diagnostics (always at bottom, collapsible) ── */}
+        <DevDiagnosticsPanel
           itineraries={itineraries}
           selectedPaxId={selectedPaxId}
           onSelectPax={setSelectedPaxId}
@@ -337,90 +409,22 @@ export default function App() {
           onInjectStorm={(count) => api.injectStorm(count)}
           onDemoScenario={handleDemoScenario}
           onDemoReset={handleDemoReset}
+          metrics={metrics}
+          cases={cases}
+          onApprove={handleApprove}
+          onDecline={handleDecline}
+          auditEntries={auditEntries}
         />
-
-        {/* 2. Real-Time Telemetry Stats Panel */}
-        <StatsPanel metrics={metrics} />
-
-        {/* 3. Traveller Profiles Board */}
-        <ItineraryBoard
-          itineraries={itineraries}
-          selectedPaxId={selectedPaxId}
-          onSelectPax={setSelectedPaxId}
-          activeDisruptions={activeDisruptions}
-        />
-
-        {/* 4. Active Disruption Alert Banner */}
-        {currentDisruption?.active && (
-          <DisruptionAlertBanner
-            disruption={currentDisruption}
-            itinerary={currentItinerary}
-            onDismiss={() => {
-              setActiveDisruptions((prev) => ({
-                ...prev,
-                [selectedPaxId]: { ...prev[selectedPaxId], active: false },
-              }));
-            }}
-          />
-        )}
-
-        {/* 5. Traveller Constraints & Policy Guardrails */}
-        <ConstraintEditor
-          paxId={selectedPaxId}
-          constraints={currentConstraints}
-          onSave={handleSaveConstraints}
-          onEvaluate={handleEvaluateRecovery}
-        />
-
-        {/* 6. Original vs Revised Itinerary Comparison */}
-        {currentDisruption?.active && (
-          <ItineraryComparison
-            original={currentItinerary}
-            chosen={activeChosen}
-            hasFeasibleSolution={currentDisruption.has_feasible_solution}
-          />
-        )}
-
-        {/* 7. Evaluated Alternative Options Grid */}
-        {currentDisruption?.active && currentDisruption.options_considered?.length > 0 && (
-          <AlternativeOptionsGrid
-            options={currentDisruption.options_considered}
-            selectedFlightId={activeChosen?.flight?.flight_id}
-            onSelectOption={(opt) => setCustomChosenOption(opt)}
-          />
-        )}
-
-        {/* 8. Recovery Recommendation & Approval Hub */}
-        {currentDisruption?.active && (
-          <RecoveryActionHub
-            disruption={currentDisruption}
-            onApprove={handleApprove}
-            onDecline={handleDecline}
-          />
-        )}
-
-        {/* 9. Live Pipeline Stepper Feed & Audit Intelligence Table */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <LiveFeed
-            cases={cases}
-            onApprove={handleApprove}
-            onDecline={handleDecline}
-          />
-          <AuditLog entries={auditEntries} />
-        </div>
       </main>
 
-      {/* Footer */}
-      <footer className="mt-16 border-t border-line py-8 px-6 text-center text-xs text-slate-500 mono">
+      {/* ── Footer ── */}
+      <footer className="mt-12 border-t border-border py-6 px-4 text-center text-xs text-muted">
         <div className="max-w-7xl mx-auto space-y-1">
-          <div className="text-slate-400 font-semibold">
-            Yatri AI — Intelligent Travel Recovery · Hackathon PS 4.1
-          </div>
-          <div>
-            Built with React, Tailwind CSS, FastAPI, NetworkX Multi-Modal Graph Engine, and Agentic Decision Guardrails.
-          </div>
-          <div className="text-slate-600 text-[10px]">
-            Notice: All airline inventories, fare deltas, hotel bookings, and vehicle reservations are synthetic fixtures for demonstration purposes.
+          <div className="font-medium text-slate-400">Yatri AI — Intelligent Travel Recovery</div>
+          <div>Built with React, Tailwind CSS, and FastAPI.</div>
+          <div className="text-muted/60 text-[11px]">
+            All airline inventories, fare deltas, hotel bookings, and vehicle reservations are
+            synthetic fixtures for demonstration purposes only.
           </div>
         </div>
       </footer>

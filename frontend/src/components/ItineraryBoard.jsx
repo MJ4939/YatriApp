@@ -3,27 +3,15 @@ import React from "react";
 function fmtTime(iso) {
   if (!iso) return "—";
   try {
-    const d = new Date(iso);
-    return d.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  } catch (e) {
-    return iso;
-  }
+    return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  } catch { return iso; }
 }
 
-function Stub({ label, value, wide, highlight }) {
-  return (
-    <div className={wide ? "col-span-2" : ""}>
-      <div className="mono text-[10px] uppercase tracking-widest text-slate-400">{label}</div>
-      <div className={`mono text-xs truncate font-medium mt-0.5 ${highlight || "text-slate-100"}`}>
-        {value}
-      </div>
-    </div>
-  );
+function fmtDate(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  } catch { return iso; }
 }
 
 export default function ItineraryBoard({
@@ -32,20 +20,19 @@ export default function ItineraryBoard({
   onSelectPax,
   activeDisruptions = {},
 }) {
+  if (!itineraries || itineraries.length === 0) {
+    return (
+      <div className="text-sm text-muted border border-dashed border-border rounded-lg p-6 text-center bg-panel/40">
+        No traveller profiles loaded.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div>
-          <span className="mono text-[10px] uppercase tracking-widest text-sky-400 font-semibold">
-            Trip Inventory & Active Bookings
-          </span>
-          <h2 className="text-base font-bold text-white mt-0.5">
-            Active Traveller Profiles
-          </h2>
-        </div>
-        <span className="mono text-xs text-slate-400 hidden sm:inline">
-          Click any card to inspect journey & edit constraints
-        </span>
+        <h2 className="text-sm font-semibold text-white">Traveller profiles</h2>
+        <span className="text-xs text-muted">Click a card to select</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -58,53 +45,72 @@ export default function ItineraryBoard({
             <div
               key={it.pax_id}
               onClick={() => onSelectPax && onSelectPax(it.pax_id)}
-              className={`relative rounded-xl border overflow-hidden cursor-pointer transition-all ${
+              className={`relative rounded-lg border overflow-hidden cursor-pointer transition-all ${
                 isSelected
-                  ? "border-sky-500 bg-panel shadow-lg shadow-sky-500/10 ring-1 ring-sky-500"
-                  : "border-line bg-panel/80 hover:border-lineLight hover:bg-panel"
+                  ? "border-accent bg-panel ring-1 ring-accent"
+                  : "border-border bg-panel hover:border-lineLight"
               }`}
             >
-              {/* Card Header */}
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-dashed border-line bg-wash">
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-subtle">
                 <div className="flex items-center gap-2">
-                  <span className="mono text-xs font-bold text-white">
-                    {it.flight.carrier.toUpperCase()} {it.flight.flight_number}
+                  <span className="text-sm font-semibold text-white">
+                    {it.flight?.carrier} {it.flight?.flight_number}
                   </span>
                   {hasDisruption && (
-                    <span className="mono text-[9px] uppercase px-1.5 py-0.5 rounded bg-alert text-white font-bold animate-pulse">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-danger text-white font-semibold animate-pulse">
                       Disrupted
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="mono text-[10px] text-slate-400">{it.pax_id}</span>
-                  {isSelected && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                  )}
+                  <span className="text-xs text-muted">{it.pax_id}</span>
+                  {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
                 </div>
               </div>
 
-              {/* Card Body */}
-              <div className="px-4 py-3 grid grid-cols-2 gap-3 text-xs">
-                <Stub label="Traveller" value={it.member_name} wide highlight="text-white font-bold" />
-                <Stub label="Route" value={`${it.flight.origin} → ${it.flight.destination}`} highlight="text-sky-300 font-semibold" />
-                <Stub label="Cabin" value={it.flight.cabin_class?.toUpperCase()} />
-                <Stub label="Scheduled Departure" value={fmtTime(it.flight.departure)} wide />
-                <Stub label="Hotel" value={it.hotel.name} wide />
-                <Stub label="Car Rental" value={`${it.car.vendor} · ${it.car.class?.toUpperCase()}`} wide />
+              {/* Body */}
+              <div className="px-4 py-3 space-y-2 text-xs">
+                <div>
+                  <div className="text-muted text-[10px] uppercase tracking-wider">Traveller</div>
+                  <div className="font-semibold text-white mt-0.5">{it.member_name}</div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <div className="text-muted text-[10px] uppercase tracking-wider">Route</div>
+                    <div className="text-accent font-medium mt-0.5">
+                      {it.flight?.origin} → {it.flight?.destination}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-muted text-[10px] uppercase tracking-wider">Cabin</div>
+                    <div className="text-slate-300 mt-0.5 capitalize">{it.flight?.cabin_class}</div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-muted text-[10px] uppercase tracking-wider">Departure</div>
+                  <div className="text-slate-300 mt-0.5">
+                    {fmtTime(it.flight?.departure)} · {fmtDate(it.flight?.departure)}
+                  </div>
+                </div>
+
+                {it.hotel?.name && (
+                  <div>
+                    <div className="text-muted text-[10px] uppercase tracking-wider">Hotel</div>
+                    <div className="text-slate-300 mt-0.5 truncate">{it.hotel.name}</div>
+                  </div>
+                )}
               </div>
 
-              {/* Notes footer */}
+              {/* Notes */}
               {it.notes && (
-                <div className="px-4 py-2 bg-wash/60 border-t border-line text-[11px] text-slate-400 truncate">
-                  <span className="mono text-slate-500 uppercase text-[9px] mr-1 font-semibold">Note:</span>
+                <div className="px-4 py-2 bg-subtle border-t border-border text-[11px] text-muted truncate">
+                  <span className="text-muted/60 mr-1">Note:</span>
                   {it.notes}
                 </div>
               )}
-
-              {/* Perforation notch, boarding-pass style */}
-              <div className="absolute -left-2 top-[34px] w-4 h-4 rounded-full bg-ink border border-line" />
-              <div className="absolute -right-2 top-[34px] w-4 h-4 rounded-full bg-ink border border-line" />
             </div>
           );
         })}

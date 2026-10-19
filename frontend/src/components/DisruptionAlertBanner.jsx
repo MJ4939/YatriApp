@@ -1,18 +1,35 @@
 import React from "react";
 
-function formatDateTime(iso) {
-  if (!iso) return "";
+function fmtTime(iso) {
+  if (!iso) return "—";
   try {
-    const d = new Date(iso);
-    return d.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  } catch (e) {
-    return iso;
+    return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  } catch { return iso; }
+}
+
+function extractCommitmentTime(commitmentStr) {
+  if (!commitmentStr) return null;
+  // Look for patterns like "19:30" or "7:30 PM"
+  const match = commitmentStr.match(/(\d{1,2}):(\d{2})/);
+  if (match) {
+    return match[0];
   }
+  return null;
+}
+
+function getTimeUntil(targetTimeStr, date) {
+  if (!targetTimeStr || !date) return null;
+  try {
+    // targetTimeStr like "19:30"
+    const [h, m] = targetTimeStr.split(":").map(Number);
+    const target = new Date(date);
+    target.setHours(h, m, 0, 0);
+    const diffMs = target - Date.now();
+    if (diffMs < 0) return null;
+    const hrs = Math.floor(diffMs / 3600000);
+    const mins = Math.floor((diffMs % 3600000) / 60000);
+    return `${hrs}h ${mins}m`;
+  } catch { return null; }
 }
 
 export default function DisruptionAlertBanner({ disruption, itinerary, onDismiss }) {
@@ -21,88 +38,119 @@ export default function DisruptionAlertBanner({ disruption, itinerary, onDismiss
   const event = disruption.event || {};
   const flight = itinerary?.flight || {};
   const isCancelled = event.status === "cancelled";
-  const severity = isCancelled ? "CRITICAL" : "MAJOR";
+  const constraints = disruption.constraints || {};
+
+  const commitmentStr = constraints.required_commitments || "";
+  const commitmentTime = extractCommitmentTime(commitmentStr);
+  const timeUntil = commitmentTime
+    ? getTimeUntil(commitmentTime, flight.departure || new Date().toISOString())
+    : null;
+
+  const statusLabel = isCancelled ? "Flight cancelled" : "Flight delayed";
+  const dotColor = isCancelled ? "bg-danger" : "bg-warning";
 
   return (
-    <div className="rounded-xl border border-alert/40 bg-gradient-to-r from-alert/15 via-panel to-panel p-5 shadow-lg shadow-alert/5">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-line">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-alert/20 border border-alert/40 flex items-center justify-center shrink-0 text-alert text-lg font-bold">
-            !
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="mono text-xs font-semibold px-2 py-0.5 rounded bg-alert text-white">
-                {severity} DISRUPTION DETECTED
-              </span>
-              <span className="mono text-xs text-slate-400">
-                {formatDateTime(disruption.timestamp ? new Date(disruption.timestamp * 1000).toISOString() : new Date().toISOString())}
-              </span>
-              <span className="mono text-xs px-2 py-0.5 rounded bg-wash border border-line text-slate-300">
-                {itinerary?.member_name} ({disruption.pax_id})
-              </span>
-            </div>
-            <h2 className="text-lg font-bold text-white mt-1">
-              {flight.carrier} Flight {flight.flight_number} {event.status?.toUpperCase() || "DISRUPTED"}
-            </h2>
-            <p className="text-xs text-slate-300 mt-0.5">
-              {event.reason || "Carrier notification: Aircraft mechanical issue. Inbound aircraft grounded."}
-            </p>
-          </div>
+    <div className="rounded-lg border border-danger/50 bg-panel overflow-hidden">
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-4 py-3 bg-danger/10 border-b border-danger/30">
+        <div className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full ${dotColor} animate-pulse shrink-0`} />
+          <span className="text-sm font-semibold text-white">{statusLabel}</span>
         </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="text-right hidden sm:block">
-            <div className="text-[10px] mono uppercase tracking-wider text-slate-400">Affected Route</div>
-            <div className="text-sm font-semibold text-white mono">{flight.origin} → {flight.destination}</div>
-          </div>
-          {onDismiss && (
-            <button
-              onClick={onDismiss}
-              className="text-slate-400 hover:text-white px-2.5 py-1 rounded bg-wash border border-line text-xs mono"
-            >
-              Clear
-            </button>
-          )}
-        </div>
+        {onDismiss && (
+          <button
+            onClick={onDismiss}
+            className="text-xs text-muted hover:text-white px-2.5 py-1 rounded bg-subtle border border-border transition-colors"
+          >
+            Dismiss
+          </button>
+        )}
       </div>
 
-      {/* Affected Bookings Breakdown */}
-      {disruption.affected_bookings && disruption.affected_bookings.length > 0 && (
-        <div className="mt-4">
-          <div className="mono text-[11px] uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
-            <span>Affected Journey Components ({disruption.affected_bookings.length})</span>
-            <span className="text-slate-500 normal-case">Multi-modal impact cascade</span>
+      <div className="px-4 py-4 space-y-4">
+        {/* Flight identity */}
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-2xl font-bold text-white tracking-tight">
+              {flight.carrier || event.carrier || "—"} {flight.flight_number || "—"}
+            </div>
+            <div className="text-lg font-semibold text-muted mt-0.5">
+              {flight.origin || "—"} → {flight.destination || "—"}
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {disruption.affected_bookings.map((item, idx) => (
-              <div
-                key={idx}
-                className="rounded-lg border border-line bg-wash/80 p-3 hover:border-lineLight transition-colors"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="mono text-[10px] uppercase tracking-wider font-semibold text-sky-400">
-                    {item.leg}
-                  </span>
-                  <span
-                    className={`mono text-[10px] px-1.5 py-0.5 rounded ${
-                      item.severity === "critical"
-                        ? "bg-alert/20 text-alert border border-alert/30"
-                        : "bg-signal/20 text-signal border border-signal/30"
-                    }`}
-                  >
-                    {item.status}
-                  </span>
-                </div>
-                <div className="text-xs font-semibold text-slate-200 truncate">{item.title}</div>
-                <div className="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                  {item.impact_reason}
-                </div>
+
+          <div className="text-right shrink-0">
+            {flight.departure && (
+              <div className="text-sm text-muted">
+                Scheduled departure: <span className="text-white font-medium">{fmtTime(flight.departure)}</span>
               </div>
-            ))}
+            )}
+            {flight.arrival && (
+              <div className="text-sm text-muted">
+                Scheduled arrival: <span className="text-white font-medium">{fmtTime(flight.arrival)}</span>
+              </div>
+            )}
+            {timeUntil && commitmentTime && (
+              <div className="text-sm text-warning mt-1 font-medium">
+                {commitmentTime} commitment in {timeUntil}
+              </div>
+            )}
           </div>
         </div>
-      )}
+
+        {/* Reason */}
+        {event.reason && (
+          <p className="text-sm text-slate-300 leading-relaxed">
+            {event.reason}
+          </p>
+        )}
+
+        {/* Affected bookings */}
+        {disruption.affected_bookings?.length > 0 && (
+          <div>
+            <div className="text-xs font-semibold text-muted mb-2 uppercase tracking-wider">
+              What's affected
+            </div>
+            <ul className="space-y-1.5">
+              {disruption.affected_bookings.map((item, idx) => {
+                const icon = item.leg?.toLowerCase() === "hotel" ? "🏨"
+                  : item.leg?.toLowerCase() === "car" ? "🚗"
+                  : "✈️";
+                const severityColor =
+                  item.severity === "critical"
+                    ? "text-danger"
+                    : item.severity === "high" || item.status === "at risk"
+                    ? "text-warning"
+                    : "text-muted";
+                return (
+                  <li key={idx} className="flex items-start gap-2 text-sm">
+                    <span className="mt-0.5">{icon}</span>
+                    <span className="text-white font-medium">{item.title || item.leg}</span>
+                    <span className="text-border">·</span>
+                    <span className={severityColor}>{item.status}</span>
+                    {item.impact_reason && (
+                      <>
+                        <span className="text-border">—</span>
+                        <span className="text-muted">{item.impact_reason}</span>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        {/* Traveller */}
+        {itinerary?.member_name && (
+          <div className="text-xs text-muted pt-1 border-t border-border">
+            Traveller: <span className="text-white">{itinerary.member_name}</span>
+            {disruption.pax_id && (
+              <span className="ml-2 text-muted/60">({disruption.pax_id})</span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

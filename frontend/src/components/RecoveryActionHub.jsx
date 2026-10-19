@@ -1,140 +1,214 @@
 import React, { useState } from "react";
 
-export default function RecoveryActionHub({
-  disruption,
-  onApprove,
-  onDecline,
-}) {
-  const [busy, setBusy] = useState(false);
+function fmtTime(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  } catch { return iso; }
+}
 
-  if (!disruption || !disruption.active) {
-    return null;
-  }
+function generateRef(auditId) {
+  if (!auditId) return "YATRI-XXXXXX";
+  return "YATRI-" + auditId.slice(0, 6).toUpperCase();
+}
+
+export default function RecoveryActionHub({ disruption, onApprove, onDecline }) {
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  if (!disruption || !disruption.active) return null;
 
   const approvalStatus = disruption.approval_status || "pending";
   const auditId = disruption.audit_id;
   const autoExecuted = disruption.auto_executed;
-  const hasFeasible = disruption.has_feasible_solution ?? true;
   const reasoning = disruption.reasoning || "";
   const rippleEffects = disruption.ripple_effects || [];
 
-  const handleAction = async (actionFn) => {
+  const handleApprove = async () => {
     if (!auditId) return;
     setBusy(true);
     try {
-      await actionFn(auditId);
+      await onApprove(auditId);
+    } finally {
+      setBusy(false);
+      setConfirming(false);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!auditId) return;
+    setBusy(true);
+    try {
+      await onDecline(auditId);
     } finally {
       setBusy(false);
     }
   };
 
+  // Section title based on state
+  let sectionTitle = "Your action is needed";
+  if (autoExecuted) sectionTitle = "Auto-resolved";
+  else if (approvalStatus === "approved") sectionTitle = "Recovery approved";
+  else if (approvalStatus === "declined") sectionTitle = "Recovery declined";
+
   return (
-    <div className="rounded-xl border border-line bg-panel p-5 shadow-lg">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line mb-4">
+    <div className="rounded-lg border border-border bg-panel p-5 space-y-5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <span className="mono text-[10px] uppercase tracking-widest text-sky-400 font-semibold">
-            Agent Decision Intelligence
-          </span>
-          <h3 className="text-base font-bold text-white mt-0.5">
-            Recovery Recommendation & Approval Hub
-          </h3>
+          <h2 className="text-base font-semibold text-white">{sectionTitle}</h2>
+          {!autoExecuted && approvalStatus === "pending" && (
+            <p className="text-sm text-muted mt-0.5">
+              Review the plan below, then approve or decline.
+            </p>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+
+        <div>
           {autoExecuted ? (
-            <span className="mono text-xs px-2.5 py-1 rounded bg-go/20 text-go border border-go/40 font-medium">
-              ✓ Auto-Resolved within Policy
+            <span className="text-xs px-2.5 py-1 rounded-full bg-success/15 border border-success/40 text-success font-medium">
+              Auto-resolved within policy limits
             </span>
           ) : approvalStatus === "approved" ? (
-            <span className="mono text-xs px-2.5 py-1 rounded bg-go/20 text-go border border-go/40 font-medium">
-              ✓ Plan Approved by Traveller
+            <span className="text-xs px-2.5 py-1 rounded-full bg-success/15 border border-success/40 text-success font-medium">
+              ✓ Approved
             </span>
           ) : approvalStatus === "declined" ? (
-            <span className="mono text-xs px-2.5 py-1 rounded bg-alert/20 text-alert border border-alert/40 font-medium">
-              ✕ Plan Declined by Traveller
+            <span className="text-xs px-2.5 py-1 rounded-full bg-danger/15 border border-danger/40 text-danger font-medium">
+              ✕ Declined
             </span>
           ) : (
-            <span className="mono text-xs px-2.5 py-1 rounded bg-signal/20 text-signal border border-signal/40 font-medium animate-pulse">
-              ● Awaiting Traveller Approval
+            <span className="text-xs px-2.5 py-1 rounded-full bg-warning/15 border border-warning/40 text-warning font-medium animate-pulse">
+              Awaiting your approval
             </span>
           )}
         </div>
       </div>
 
-      {/* Decision Reasoning */}
-      <div className="rounded-lg bg-wash p-4 border border-line">
-        <div className="mono text-[11px] uppercase tracking-wider text-slate-400 mb-1 font-semibold flex items-center justify-between">
-          <span>Yatri AI Agent Reasoning</span>
-          <span className="text-[10px] text-slate-500 normal-case font-normal">
-            Deterministic Evaluation + Multi-Objective Policy
-          </span>
-        </div>
-        <p className="text-sm text-slate-200 leading-relaxed font-normal">
-          {reasoning || "Analyzing alternatives and matching constraints..."}
-        </p>
-
-        {/* Ripple Effects Breakdown */}
-        {rippleEffects.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-line/60">
-            <span className="mono text-[10px] uppercase tracking-wider text-sky-400 block mb-1.5 font-semibold">
-              Dependent Booking Ripple Adjustments:
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {rippleEffects.map((r, i) => (
-                <div
-                  key={i}
-                  className="rounded bg-panel/80 p-2 border border-line text-xs text-slate-300"
-                >
-                  <div className="mono text-[10px] font-semibold text-sky-300 capitalize">
-                    {r.leg} {r.field}
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">{r.reason}</div>
-                </div>
-              ))}
-            </div>
+      {/* AI Reasoning */}
+      {reasoning && (
+        <div className="rounded-lg bg-subtle border border-border p-4">
+          <div className="text-xs font-semibold text-muted mb-2">
+            Why this option was selected
           </div>
-        )}
-      </div>
-
-      {/* Approval Action Bar */}
-      <div className="mt-4 pt-4 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="text-xs text-slate-400 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-signal inline-block" />
-          <span>
-            <strong className="text-slate-300">Honest Sandbox Notice:</strong> Approval triggers
-            simulated inventory ticket issuance. No live airline GDS or card charge occurs.
-          </span>
+          <p className="text-sm text-slate-200 leading-relaxed">
+            {reasoning}
+          </p>
         </div>
+      )}
 
+      {/* Ripple effects */}
+      {rippleEffects.length > 0 && (
+        <div>
+          <div className="text-xs font-semibold text-muted mb-2">
+            Booking adjustments
+          </div>
+          <ul className="space-y-2">
+            {rippleEffects.map((r, i) => {
+              const fromLabel = r.from || "—";
+              const toLabel = r.to || "—";
+              const fieldLabel = r.field
+                ? r.field.replace(/_/g, " ")
+                : "updated";
+              const legLabel = r.leg
+                ? r.leg.charAt(0).toUpperCase() + r.leg.slice(1)
+                : "";
+
+              return (
+                <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                  <span className="mt-0.5 text-base">
+                    {r.leg?.toLowerCase() === "hotel" ? "🏨" : r.leg?.toLowerCase() === "car" ? "🚗" : "✈️"}
+                  </span>
+                  <span>
+                    <span className="text-white font-medium">{legLabel} {fieldLabel}</span>{" "}
+                    moved from{" "}
+                    <span className="text-muted line-through">{fromLabel}</span>{" "}
+                    to{" "}
+                    <span className="text-white">{toLabel}</span>
+                    {r.reason && (
+                      <span className="text-muted"> — {r.reason}</span>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/* Action bar */}
+      <div className="border-t border-border pt-4 space-y-3">
+        {/* Pending: show confirm flow */}
         {!autoExecuted && approvalStatus === "pending" && (
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={() => handleAction(onApprove)}
-              disabled={busy}
-              className="mono text-xs uppercase tracking-wider font-bold px-5 py-2.5 rounded-lg bg-go text-slate-950 hover:bg-emerald-400 disabled:opacity-50 transition-all shadow-md shadow-go/20"
-            >
-              {busy ? "Processing..." : "Approve Recovery Plan"}
-            </button>
-            <button
-              onClick={() => handleAction(onDecline)}
-              disabled={busy}
-              className="mono text-xs uppercase tracking-wider font-semibold px-4 py-2.5 rounded-lg bg-alert/20 text-alert border border-alert/40 hover:bg-alert/30 disabled:opacity-50 transition-colors"
-            >
-              Decline Plan
-            </button>
+          <div className="space-y-3">
+            {!confirming ? (
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={() => setConfirming(true)}
+                  disabled={busy}
+                  className="px-5 py-2.5 rounded-lg bg-success text-slate-950 text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+                >
+                  Approve recovery plan
+                </button>
+                <button
+                  onClick={handleDecline}
+                  disabled={busy}
+                  className="px-4 py-2.5 rounded-lg bg-danger/20 text-danger border border-danger/40 text-sm font-semibold hover:bg-danger/30 disabled:opacity-50 transition-colors"
+                >
+                  Decline
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-success/40 bg-success/10 p-4 space-y-3">
+                <p className="text-sm text-white font-medium">
+                  Confirm approval of this recovery plan?
+                </p>
+                <p className="text-xs text-muted">
+                  This will simulate ticket issuance. No real booking will be made.
+                </p>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleApprove}
+                    disabled={busy}
+                    className="px-4 py-2 rounded-lg bg-success text-slate-950 text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+                  >
+                    {busy ? "Processing…" : "Yes, approve"}
+                  </button>
+                  <button
+                    onClick={() => setConfirming(false)}
+                    disabled={busy}
+                    className="px-4 py-2 rounded-lg bg-subtle border border-border text-sm text-muted hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
+        {/* Approved */}
         {approvalStatus === "approved" && (
-          <div className="mono text-xs text-go font-semibold flex items-center gap-2">
-            <span>✓ Simulated Rebooking Confirmed (PNR: YATRI-{auditId?.slice(0, 6).toUpperCase()})</span>
+          <div className="flex items-center gap-2 text-sm text-success font-medium">
+            <span>✓</span>
+            <span>
+              Recovery plan approved (simulation) — Reference: {generateRef(auditId)}
+            </span>
           </div>
         )}
 
+        {/* Declined */}
         {approvalStatus === "declined" && (
-          <div className="mono text-xs text-alert font-semibold flex items-center gap-2">
-            <span>✕ Traveller declined simulated alternative</span>
+          <div className="flex items-center gap-2 text-sm text-danger font-medium">
+            <span>✕</span>
+            <span>Recovery plan declined. No changes have been made.</span>
           </div>
         )}
+
+        {/* Disclaimer */}
+        <p className="text-xs text-muted/70">
+          This is a simulation. No real flight, hotel, or car booking has been made.
+        </p>
       </div>
     </div>
   );

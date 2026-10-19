@@ -1,23 +1,17 @@
 import React from "react";
 
-function formatTime(iso) {
+function fmtTime(iso) {
   if (!iso) return "—";
   try {
-    const d = new Date(iso);
-    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  } catch (e) {
-    return iso;
-  }
+    return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  } catch { return iso; }
 }
 
-function formatDate(iso) {
+function fmtDate(iso) {
   if (!iso) return "";
   try {
-    const d = new Date(iso);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  } catch (e) {
-    return iso;
-  }
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  } catch { return iso; }
 }
 
 export default function ItineraryComparison({ original, chosen, hasFeasibleSolution }) {
@@ -35,191 +29,147 @@ export default function ItineraryComparison({ original, chosen, hasFeasibleSolut
   const delayMinutes = chosen?.delay_minutes ?? 0;
 
   return (
-    <div className="rounded-xl border border-line bg-panel overflow-hidden shadow-lg">
-      <div className="px-5 py-3.5 border-b border-line bg-wash flex flex-wrap items-center justify-between gap-3">
+    <div className="rounded-lg border border-border bg-panel overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-border bg-subtle flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-white">Original vs. recovery itinerary</h3>
         <div>
-          <span className="mono text-[10px] uppercase tracking-widest text-sky-400 font-semibold">
-            Itinerary Synchronization
-          </span>
-          <h3 className="text-base font-bold text-white mt-0.5">
-            Original Itinerary vs. Revised Recovery Plan
-          </h3>
-        </div>
-        <div className="flex items-center gap-2">
           {hasFeasibleSolution ? (
-            <span className="mono text-xs px-2.5 py-1 rounded-full bg-go/15 border border-go/40 text-go font-medium">
-              Feasible Recovery Feasible
+            <span className="text-xs px-2.5 py-1 rounded-full bg-success/15 border border-success/40 text-success font-medium">
+              Feasible recovery found
             </span>
           ) : (
-            <span className="mono text-xs px-2.5 py-1 rounded-full bg-alert/15 border border-alert/40 text-alert font-medium">
-              Constraint Waiver Required
+            <span className="text-xs px-2.5 py-1 rounded-full bg-danger/15 border border-danger/40 text-danger font-medium">
+              No fully compliant option
             </span>
           )}
         </div>
       </div>
 
-      <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left Column: Original Itinerary */}
-        <div className="rounded-lg border border-line bg-wash/60 p-4 relative">
-          <div className="flex items-center justify-between pb-3 border-b border-line mb-3">
-            <span className="mono text-xs uppercase tracking-wider font-semibold text-slate-400">
-              Original Schedule
+      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Original */}
+        <div className="rounded-lg border border-border bg-subtle p-4">
+          <div className="flex items-center justify-between pb-3 border-b border-border mb-3">
+            <span className="text-xs font-semibold text-muted uppercase tracking-wider">
+              Original schedule
             </span>
-            <span className="mono text-xs px-2 py-0.5 rounded bg-alert/20 text-alert border border-alert/30">
+            <span className="text-xs px-2 py-0.5 rounded bg-danger/20 text-danger border border-danger/30 font-medium">
               Disrupted
             </span>
           </div>
 
-          <div className="space-y-4">
-            {/* Flight */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="mono text-slate-400">Flight Leg</span>
-                <span className="mono text-slate-300 font-medium">${origFlight.fare?.toFixed(2)}</span>
-              </div>
-              <div className="text-sm font-semibold text-white">
+          <div className="space-y-3 text-sm">
+            <div>
+              <div className="text-xs text-muted mb-0.5">Flight</div>
+              <div className="font-semibold text-white">
                 {origFlight.carrier} {origFlight.flight_number}
               </div>
-              <div className="mono text-xs text-slate-300 flex items-center gap-2">
-                <span>{origFlight.origin} {formatTime(origFlight.departure)}</span>
-                <span className="text-slate-500">→</span>
-                <span>{origFlight.destination} {formatTime(origFlight.arrival)}</span>
+              <div className="text-slate-300">
+                {origFlight.origin} {fmtTime(origFlight.departure)} → {origFlight.destination} {fmtTime(origFlight.arrival)}
               </div>
-              <div className="mono text-[11px] text-slate-400">
-                Cabin: {origFlight.cabin_class?.toUpperCase()} · Date: {formatDate(origFlight.departure)}
+              <div className="text-xs text-muted">
+                {fmtDate(origFlight.departure)} · {origFlight.cabin_class} · ${origFlight.fare?.toFixed(2)}
               </div>
             </div>
 
-            {/* Hotel */}
-            <div className="pt-3 border-t border-line/60 space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="mono text-slate-400">Hotel Accommodation</span>
-                <span className="mono text-slate-300 font-medium">${origHotel.rate_per_night?.toFixed(2)}/nt</span>
-              </div>
-              <div className="text-sm font-semibold text-white">{origHotel.name}</div>
-              <div className="mono text-xs text-slate-300">
-                Check-in: {formatTime(origHotel.check_in)} ({formatDate(origHotel.check_in)})
+            <div className="pt-2 border-t border-border/60">
+              <div className="text-xs text-muted mb-0.5">Hotel</div>
+              <div className="font-medium text-white">{origHotel.name}</div>
+              <div className="text-xs text-slate-300">
+                Check-in: {fmtTime(origHotel.check_in)} · ${origHotel.rate_per_night?.toFixed(2)}/night
               </div>
             </div>
 
-            {/* Car */}
-            <div className="pt-3 border-t border-line/60 space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="mono text-slate-400">Ground Transportation</span>
-                <span className="mono text-slate-300 font-medium">{origCar.class?.toUpperCase()}</span>
-              </div>
-              <div className="text-sm font-semibold text-white">{origCar.vendor} Car Rental</div>
-              <div className="mono text-xs text-slate-300">
-                Pickup: {formatTime(origCar.pickup)} ({formatDate(origCar.pickup)})
+            <div className="pt-2 border-t border-border/60">
+              <div className="text-xs text-muted mb-0.5">Car rental</div>
+              <div className="font-medium text-white">{origCar.vendor}</div>
+              <div className="text-xs text-slate-300">
+                Pickup: {fmtTime(origCar.pickup)} · {origCar.class}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Revised Recovery Itinerary */}
-        <div className="rounded-lg border border-sky-500/40 bg-gradient-to-b from-sky-950/20 via-panel to-panel p-4 relative shadow-sm">
-          <div className="flex items-center justify-between pb-3 border-b border-sky-500/30 mb-3">
-            <span className="mono text-xs uppercase tracking-wider font-semibold text-sky-400">
-              Revised Recovery Plan
+        {/* Recovery */}
+        <div className="rounded-lg border border-accent/40 bg-panel p-4">
+          <div className="flex items-center justify-between pb-3 border-b border-accent/30 mb-3">
+            <span className="text-xs font-semibold text-accent uppercase tracking-wider">
+              Recovery plan
             </span>
-            <span className="mono text-xs px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
-              Synchronized
-            </span>
+            {revisedFlight && (
+              <span className="text-xs px-2 py-0.5 rounded bg-accent/20 text-accent border border-accent/30 font-medium">
+                Adjusted
+              </span>
+            )}
           </div>
 
           {revisedFlight ? (
-            <div className="space-y-4">
-              {/* Revised Flight */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="mono text-sky-300">Alternate Flight</span>
-                  <span className="mono font-semibold text-white">
-                    ${revisedFlight.fare?.toFixed(2)}{" "}
-                    <span className="text-signal text-[11px]">
-                      (+${fareDelta.toFixed(2)})
-                    </span>
-                  </span>
+            <div className="space-y-3 text-sm">
+              <div>
+                <div className="text-xs text-muted mb-0.5">Alternate flight</div>
+                <div className="font-semibold text-white">
+                  {revisedFlight.carrier} {revisedFlight.flight_number}
                 </div>
-                <div className="text-sm font-semibold text-white flex items-center gap-2">
-                  <span>{revisedFlight.carrier} {revisedFlight.flight_number}</span>
-                  {revisedFlight.flight_number !== origFlight.flight_number && (
-                    <span className="mono text-[10px] px-1.5 py-0.5 rounded bg-sky-900/60 text-sky-200 border border-sky-700">
-                      Alternate
-                    </span>
+                <div className="text-slate-200">
+                  {revisedFlight.origin} {fmtTime(revisedFlight.departure)} → {revisedFlight.destination} {fmtTime(revisedFlight.arrival)}
+                </div>
+                <div className="text-xs text-muted flex items-center gap-2">
+                  <span>{fmtDate(revisedFlight.departure)} · {revisedFlight.cabin_class}</span>
+                  <span>·</span>
+                  <span className="text-warning">+{delayMinutes}m vs original</span>
+                  {fareDelta > 0 && (
+                    <>
+                      <span>·</span>
+                      <span className="text-warning">+${fareDelta.toFixed(2)}</span>
+                    </>
                   )}
                 </div>
-                <div className="mono text-xs text-slate-200 flex items-center gap-2">
-                  <span>{revisedFlight.origin} {formatTime(revisedFlight.departure)}</span>
-                  <span className="text-sky-400">→</span>
-                  <span>{revisedFlight.destination} {formatTime(revisedFlight.arrival)}</span>
-                </div>
-                <div className="mono text-[11px] text-slate-400 flex items-center gap-2">
-                  <span>Cabin: {revisedFlight.cabin_class?.toUpperCase()}</span>
-                  <span>·</span>
-                  <span className="text-signal font-medium">+{delayMinutes}m vs original</span>
+              </div>
+
+              <div className="pt-2 border-t border-accent/20">
+                <div className="text-xs text-muted mb-0.5">Hotel</div>
+                <div className="font-medium text-white">{revisedHotel?.name}</div>
+                <div className="text-xs text-slate-300">
+                  Adjusted check-in: {fmtTime(revisedHotel?.check_in)}
                 </div>
               </div>
 
-              {/* Revised Hotel */}
-              <div className="pt-3 border-t border-sky-900/40 space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="mono text-sky-300">Synchronized Hotel</span>
-                  <span className="mono text-slate-300 font-medium">
-                    ${revisedHotel?.rate_per_night?.toFixed(2)}/nt
-                  </span>
-                </div>
-                <div className="text-sm font-semibold text-white">{revisedHotel?.name}</div>
-                <div className="mono text-xs text-sky-200">
-                  Adjusted Check-in: {formatTime(revisedHotel?.check_in)} ({formatDate(revisedHotel?.check_in)})
-                </div>
-              </div>
-
-              {/* Revised Car */}
-              <div className="pt-3 border-t border-sky-900/40 space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="mono text-sky-300">Synchronized Car Rental</span>
-                  <span className="mono text-slate-300 font-medium">
-                    {revisedCar?.class?.toUpperCase()}
-                  </span>
-                </div>
-                <div className="text-sm font-semibold text-white">{revisedCar?.vendor} Car Rental</div>
-                <div className="mono text-xs text-sky-200">
-                  Adjusted Pickup: {formatTime(revisedCar?.pickup)} ({formatDate(revisedCar?.pickup)})
+              <div className="pt-2 border-t border-accent/20">
+                <div className="text-xs text-muted mb-0.5">Car rental</div>
+                <div className="font-medium text-white">{revisedCar?.vendor}</div>
+                <div className="text-xs text-slate-300">
+                  Adjusted pickup: {fmtTime(revisedCar?.pickup)}
                 </div>
               </div>
             </div>
           ) : (
-            <div className="text-center py-10 mono text-xs text-slate-500">
-              No recovery plan formulated yet.
+            <div className="text-center py-10 text-sm text-muted">
+              No recovery plan selected yet.
             </div>
           )}
         </div>
       </div>
 
-      {/* Delta Footer Banner */}
+      {/* Delta footer */}
       {chosen && (
-        <div className="px-5 py-3 bg-wash/90 border-t border-line flex flex-wrap items-center justify-between gap-4 text-xs">
-          <div className="flex items-center gap-4 flex-wrap">
-            <div>
-              <span className="mono text-slate-400 uppercase text-[10px] tracking-wider block">Additional Cost</span>
-              <span className="mono font-semibold text-white">
-                {fareDelta > 0 ? `+$${fareDelta.toFixed(2)}` : "$0.00"}
-              </span>
-            </div>
-            <div className="w-px h-6 bg-line" />
-            <div>
-              <span className="mono text-slate-400 uppercase text-[10px] tracking-wider block">Touchdown Delay</span>
-              <span className="mono font-semibold text-signal">+{delayMinutes} minutes</span>
-            </div>
-            <div className="w-px h-6 bg-line" />
-            <div>
-              <span className="mono text-slate-400 uppercase text-[10px] tracking-wider block">Revised Touchdown</span>
-              <span className="mono font-semibold text-white">{formatTime(revisedFlight?.arrival)}</span>
-            </div>
-          </div>
-          <div className="text-[11px] mono text-slate-400 italic">
-            Simulated GDS inventory · All dependencies re-anchored
-          </div>
+        <div className="px-4 py-3 bg-subtle border-t border-border flex flex-wrap items-center gap-4 text-xs text-muted">
+          <span>
+            Additional cost:{" "}
+            <span className={`font-semibold ${fareDelta > 0 ? "text-warning" : "text-success"}`}>
+              {fareDelta > 0 ? `+$${fareDelta.toFixed(2)}` : "$0.00"}
+            </span>
+          </span>
+          <span className="text-border">·</span>
+          <span>
+            Delay:{" "}
+            <span className="font-semibold text-warning">+{delayMinutes} min</span>
+          </span>
+          <span className="text-border">·</span>
+          <span>
+            New arrival:{" "}
+            <span className="font-semibold text-white">{fmtTime(revisedFlight?.arrival)}</span>
+          </span>
+          <span className="ml-auto italic text-muted/60">Simulation only</span>
         </div>
       )}
     </div>

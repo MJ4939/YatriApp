@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
 
+function fmtTime(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  } catch { return iso; }
+}
+
 export default function ConstraintEditor({
   constraints,
   paxId,
@@ -7,6 +14,7 @@ export default function ConstraintEditor({
   onEvaluate,
   busy,
 }) {
+  const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     max_additional_cost: 150,
     latest_arrival_time: "2026-11-15T19:00:00",
@@ -34,128 +42,157 @@ export default function ConstraintEditor({
   };
 
   const handleApply = async () => {
-    if (onSave) {
-      await onSave(form);
-    }
-    if (onEvaluate) {
-      await onEvaluate(form);
-    }
+    if (onSave) await onSave(form);
+    if (onEvaluate) await onEvaluate(form);
+    setOpen(false);
   };
 
+  const priorityLabel = {
+    fastest_arrival: "Fastest arrival",
+    lowest_cost: "Lowest cost",
+    least_disruption: "Least disruption",
+    balanced: "Balanced",
+  };
+
+  const arriveBy = form.latest_arrival_time?.slice(11, 16) || "—";
+
   return (
-    <div className="rounded-xl border border-line bg-panel p-5 shadow-md">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line mb-4">
+    <div className="rounded-lg border border-border bg-panel">
+      {/* Summary header — always visible */}
+      <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span className="mono text-[10px] uppercase tracking-widest text-sky-400 font-semibold">
-            Agent Guardrails & Policies
-          </span>
-          <h3 className="text-sm font-bold text-white mt-0.5">
-            Traveller Constraints & Priority Engine
-          </h3>
+          <h3 className="text-sm font-semibold text-white">Your preferences</h3>
+          <p className="text-xs text-muted mt-0.5">
+            These limits guide the recovery recommendations above.
+          </p>
         </div>
-        <span className="mono text-[11px] text-slate-400">
-          Hard Constraints vs. Soft Trade-offs
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Hard Constraint: Max Budget */}
-        <div className="rounded-lg bg-wash p-3 border border-line">
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-semibold text-slate-200">
-              Max Additional Budget
-            </label>
-            <span className="mono text-xs font-bold text-signal">
-              ${form.max_additional_cost}
-            </span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="600"
-            step="25"
-            value={form.max_additional_cost}
-            onChange={(e) => handleChange("max_additional_cost", parseFloat(e.target.value))}
-            className="w-full accent-signal cursor-pointer"
-          />
-          <div className="flex justify-between text-[10px] mono text-slate-500 mt-1">
-            <span>$0 (Strict)</span>
-            <span>$300</span>
-            <span>$600</span>
-          </div>
-          <span className="text-[10px] text-slate-400 block mt-1">
-            Hard Constraint: Rejects options exceeding this fare increase.
-          </span>
-        </div>
-
-        {/* Hard Constraint: Arrival Deadline */}
-        <div className="rounded-lg bg-wash p-3 border border-line">
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-semibold text-slate-200">
-              Latest Arrival Deadline
-            </label>
-            <span className="mono text-[11px] text-sky-400 font-semibold">
-              {form.latest_arrival_time?.slice(11, 16) || "19:00"}
-            </span>
-          </div>
-          <input
-            type="datetime-local"
-            value={form.latest_arrival_time?.slice(0, 16) || "2026-11-15T19:00"}
-            onChange={(e) => handleChange("latest_arrival_time", e.target.value + ":00")}
-            className="w-full text-xs mono bg-panel border border-line rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-sky-500"
-          />
-          <span className="text-[10px] text-slate-400 block mt-1.5">
-            Hard Constraint: Rejects itineraries arriving after this cutoff.
-          </span>
-        </div>
-
-        {/* Priority Preference */}
-        <div className="rounded-lg bg-wash p-3 border border-line">
-          <label className="text-xs font-semibold text-slate-200 block mb-1.5">
-            Optimization Priority
-          </label>
-          <select
-            value={form.priority_preference}
-            onChange={(e) => handleChange("priority_preference", e.target.value)}
-            className="w-full text-xs mono bg-panel border border-line rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-sky-500"
-          >
-            <option value="fastest_arrival">Fastest Arrival (Minimize Delays)</option>
-            <option value="lowest_cost">Lowest Cost (Minimize Fare Delta)</option>
-            <option value="least_disruption">Least Disruption (Preserve Hotel/Car)</option>
-            <option value="balanced">Balanced Multi-Objective</option>
-          </select>
-          <span className="text-[10px] text-slate-400 block mt-1.5">
-            Soft Preference: Tunes Dijkstra edge weights in the graph engine.
-          </span>
-        </div>
-      </div>
-
-      <div className="mt-4 pt-3 border-t border-line flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
-            <input
-              type="checkbox"
-              checked={form.must_keep_cabin}
-              onChange={(e) => handleChange("must_keep_cabin", e.target.checked)}
-              className="rounded border-line bg-panel accent-sky-500 text-sky-500"
-            />
-            <span>Strict Cabin Class (Prohibit Downgrades)</span>
-          </label>
-          {form.required_commitments && (
-            <span className="text-[11px] mono text-slate-400 hidden lg:inline">
-              Note: {form.required_commitments}
-            </span>
-          )}
-        </div>
-
         <button
-          onClick={handleApply}
-          disabled={busy}
-          className="mono text-xs uppercase tracking-wider font-semibold px-4 py-2 rounded-lg bg-sky-500 text-slate-950 hover:bg-sky-400 disabled:opacity-50 transition-colors shadow-sm shadow-sky-500/20"
+          onClick={() => setOpen((o) => !o)}
+          className="text-xs px-3 py-1.5 rounded-lg bg-subtle border border-border text-muted hover:text-white transition-colors"
         >
-          {busy ? "Evaluating..." : "Apply Constraints & Rank Options"}
+          {open ? "Cancel" : "Edit preferences"}
         </button>
       </div>
+
+      {/* Inline constraint summary */}
+      {!open && (
+        <div className="px-4 pb-3 flex flex-wrap gap-3 text-xs text-muted border-t border-border pt-3">
+          <span>
+            <span className="text-white font-medium">\${form.max_additional_cost}</span> max extra cost
+          </span>
+          <span className="text-border">·</span>
+          <span>
+            Arrive by <span className="text-white font-medium">{arriveBy}</span>
+          </span>
+          <span className="text-border">·</span>
+          <span>
+            Priority: <span className="text-white font-medium">{priorityLabel[form.priority_preference] || form.priority_preference}</span>
+          </span>
+          {form.must_keep_cabin && (
+            <>
+              <span className="text-border">·</span>
+              <span>Keep cabin class</span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Expanded editor */}
+      {open && (
+        <div className="border-t border-border px-4 py-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Max cost */}
+            <div className="rounded-lg bg-subtle p-3 border border-border">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-slate-200">
+                  Max extra cost
+                </label>
+                <span className="text-xs font-semibold text-warning mono">
+                  \${form.max_additional_cost}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="600"
+                step="25"
+                value={form.max_additional_cost}
+                onChange={(e) => handleChange("max_additional_cost", parseFloat(e.target.value))}
+                className="w-full accent-warning cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-muted mt-1">
+                <span>$0 (strict)</span>
+                <span>$300</span>
+                <span>$600</span>
+              </div>
+              <p className="text-[11px] text-muted mt-1.5">
+                Options that cost more than this are excluded.
+              </p>
+            </div>
+
+            {/* Latest arrival */}
+            <div className="rounded-lg bg-subtle p-3 border border-border">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-slate-200">
+                  Must arrive by
+                </label>
+                <span className="text-xs font-semibold text-accent mono">
+                  {form.latest_arrival_time?.slice(11, 16) || "19:00"}
+                </span>
+              </div>
+              <input
+                type="datetime-local"
+                value={form.latest_arrival_time?.slice(0, 16) || "2026-11-15T19:00"}
+                onChange={(e) => handleChange("latest_arrival_time", e.target.value + ":00")}
+                className="w-full text-xs bg-panel border border-border rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-accent"
+              />
+              <p className="text-[11px] text-muted mt-1.5">
+                Flights arriving later are excluded.
+              </p>
+            </div>
+
+            {/* Priority */}
+            <div className="rounded-lg bg-subtle p-3 border border-border">
+              <label className="text-xs font-medium text-slate-200 block mb-2">
+                Prioritise
+              </label>
+              <select
+                value={form.priority_preference}
+                onChange={(e) => handleChange("priority_preference", e.target.value)}
+                className="w-full text-xs bg-panel border border-border rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-accent"
+              >
+                <option value="fastest_arrival">Fastest arrival (minimise delay)</option>
+                <option value="lowest_cost">Lowest cost (minimise fare increase)</option>
+                <option value="least_disruption">Least disruption (keep hotel/car)</option>
+                <option value="balanced">Balanced</option>
+              </select>
+              <p className="text-[11px] text-muted mt-1.5">
+                Influences which option is ranked first.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+              <input
+                type="checkbox"
+                checked={form.must_keep_cabin}
+                onChange={(e) => handleChange("must_keep_cabin", e.target.checked)}
+                className="rounded border-border bg-panel accent-accent"
+              />
+              <span>Don't downgrade cabin class</span>
+            </label>
+
+            <button
+              onClick={handleApply}
+              disabled={busy}
+              className="text-xs px-4 py-2 rounded-lg bg-accent text-white font-semibold hover:bg-blue-500 disabled:opacity-50 transition-colors"
+            >
+              {busy ? "Evaluating…" : "Update & re-evaluate options"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
