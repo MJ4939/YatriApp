@@ -1,0 +1,98 @@
+{
+  "PAX-1001": {
+    "pax_id": "PAX-1001",
+    "member_name": "Jordan Lee",
+    "notes": "Attending Chicago Tech Summit keynote at 19:30",
+    "flight": {
+      "flight_id": "FL-100",
+      "carrier": "United",
+      "flight_number": "UA 812",
+      "origin": "SFO",
+      "destination": "ORD",
+      "departure": "2026-11-15T09:15:00",
+      "arrival": "2026-11-15T15:20:00",
+      "cabin_class": "economy",
+      "fare": 412.00
+    },
+    "hotel": {
+      "hotel_id": "HT-200",
+      "name": "The Langham Chicago",
+      "city": "ORD",
+      "check_in": "2026-11-15T16:00:00",
+      "check_out": "2026-11-18T11:00:00",
+      "rate_per_night": 289.00
+    },
+    "car": {
+      "car_id": "CR-300",
+      "vendor": "Hertz",
+      "city": "ORD",
+      "pickup": "2026-11-15T16:30:00",
+      "dropoff": "2026-11-18T10:00:00",
+      "class": "midsize"
+    }
+  },
+  "PAX-1002": {
+    "pax_id": "PAX-1002",
+    "member_name": "Priya Nair",
+    "notes": "Client onsite meetings in Atlanta starting next morning",
+    "flight": {
+      "flight_id": "FL-101",
+      "carrier": "Delta",
+      "flight_number": "DL 455",
+      "origin": "JFK",
+      "destination": "ATL",
+      "departure": "2026-11-15T07:40:00",
+      "arrival": "2026-11-15T10:35:00",
+      "cabin_class": "economy",
+      "fare": 298.00
+    },
+    "hotel": {
+      "hotel_id": "HT-201",
+      "name": "Atlanta Marriott Marquis",
+      "city": "ATL",
+      "check_in": "2026-11-15T15:00:00",
+      "check_out": "2026-11-17T11:00:00",
+      "rate_per_night": 219.00
+    },
+    "car": {
+      "car_id": "CR-301",
+      "vendor": "Avis",
+      "city": "ATL",
+      "pickup": "2026-11-15T11:00:00",
+      "dropoff": "2026-11-17T09:00:00",
+      "class": "economy"
+    }
+  },
+  "PAX-1003": {
+    "pax_id": "PAX-1003",
+    "member_name": "Marcus Chen",
+    "notes": "Executive retreat in Miami Beach",
+    "flight": {
+      "flight_id": "FL-102",
+      "carrier": "American",
+      "flight_number": "AA 990",
+      "origin": "DFW",
+      "destination": "MIA",
+      "departure": "2026-11-15T13:05:00",
+      "arrival": "2026-11-15T16:50:00",
+      "cabin_class": "business",
+      "fare": 780.00
+    },
+    "hotel": {
+      "hotel_id": "HT-202",
+      "name": "Fontainebleau Miami Beach",
+      "city": "MIA",
+      "check_in": "2026-11-15T17:30:00",
+      "check_out": "2026-11-19T11:00:00",
+      "rate_per_night": 445.00
+    },
+    "car": {
+      "car_id": "CR-302",
+      "vendor": "National",
+      "city": "MIA",
+      "pickup": "2026-11-15T18:00:00",
+      "dropoff": "2026-11-19T10:00:00",
+      "class": "premium"
+    }
+  }
+}
